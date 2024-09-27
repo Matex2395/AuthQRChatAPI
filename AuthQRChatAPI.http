@@ -1,0 +1,6 @@
+@AuthQRChatAPI_HostAddress = http://localhost:5087
+
+GET {{AuthQRChatAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

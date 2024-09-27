@@ -5,16 +5,20 @@ namespace AuthQRChatAPI.Data
 {
     public class AppDbContext : DbContext
     {
-        protected readonly IConfiguration Configuration;
+        protected readonly IConfiguration _configuration;
 
-        public AppDbContext(IConfiguration configuration)
+        public AppDbContext(DbContextOptions<AppDbContext> options, IConfiguration configuration)
+        : base(options)
         {
-            Configuration = configuration;
+            _configuration = configuration;
         }
 
-        protected void OnConfiguring(DbContextOptionsBuilder options)
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            options.UseNpgsql(Configuration.GetConnectionString("WebApiDatabase"));
+            if (!optionsBuilder.IsConfigured)
+            {
+                optionsBuilder.UseNpgsql(_configuration.GetConnectionString("WebApiDatabase"));
+            }
         }
 
         public DbSet<QR> QRCodes { get; set; }

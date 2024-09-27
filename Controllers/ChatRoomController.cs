@@ -47,7 +47,7 @@ namespace AuthQRChatAPI.Controllers
             var usersPaid = chatRoom.UserPayments.Count(x => x.HasPaid);
             var usersNotPaid = chatRoom.UserPayments.Count(x => !x.HasPaid);
 
-            var response = new PaymentStatusResponseModel
+            var response = new PaymentStatusResponse
             {
                 TotalAmount = chatRoom.TotalAmount,
                 AmountRemaining = chatRoom.AmountRemaining,
@@ -82,6 +82,20 @@ namespace AuthQRChatAPI.Controllers
             _db.UserPayments.Update(existingUserPayment);
             await _db.SaveChangesAsync();
             return Ok(existingUserPayment);
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteChatRoom(Guid roomId)
+        {
+            var chatRoom = await _db.ChatRooms.Include(cr => cr.UserPayments)
+                .FirstOrDefaultAsync(cr => cr.RoomId == roomId);
+            if (chatRoom == null)
+                return NotFound("Chat Room not found");
+            {
+            }
+            _db.ChatRooms.Remove(chatRoom);
+            await _db.SaveChangesAsync();
+            return Ok("Chat Room deleted successfully");
         }
     }
 }

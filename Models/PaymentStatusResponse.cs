@@ -1,6 +1,6 @@
 ﻿namespace AuthQRChatAPI.Models
 {
-    internal class PaymentStatusResponseModel
+    internal class PaymentStatusResponse
     {
         public decimal TotalAmount { get; set; }
         public decimal AmountRemaining { get; set; }

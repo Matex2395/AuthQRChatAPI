@@ -13,6 +13,11 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(WebApplication.CreateBuilder(args).Configuration.GetConnectionString("WebApiDatabase")));
 
+//Escuchar
+builder.WebHost.UseUrls("http://0.0.0.0:5087");
+
+builder.Services.AddHttpClient();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

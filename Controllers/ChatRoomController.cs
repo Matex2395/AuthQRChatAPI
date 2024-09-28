@@ -2,9 +2,8 @@
 using AuthQRChatAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
+using payments.Models;
+using System.Text.Json;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -14,88 +13,65 @@ namespace AuthQRChatAPI.Controllers
     [ApiController]
     public class ChatRoomController : ControllerBase
     {
-        private readonly AppDbContext _db;
+        private readonly HttpClient _httpClient;
+        private readonly IConfiguration _configuration;
 
-        public ChatRoomController(AppDbContext db)
+        public ChatRoomController(IHttpClientFactory httpClientFactory, IConfiguration configuration)
         {
-            _db = db;
+            _httpClient = httpClientFactory.CreateClient();
+            _configuration = configuration;
+
         }
 
         // POST friends/v1/<ChatRoomController>
-        [HttpPost("create")]
-        public async Task<IActionResult> CreateChatRoom([FromBody] ChatRoom chatRoom)
+        [HttpGet("Get")]
+        public async Task<IActionResult> GetChatRoom([FromBody] ChatRoom chatRoom, int orderId, int accountId)
         {
-            chatRoom.RoomId = Guid.NewGuid();
-            chatRoom.AmountRemaining = chatRoom.TotalAmount;
+            // Fetch the bank account number from the Account API
+            var accountApiUrl = _configuration["AccountApiUrl"] + $"Account/getAccountById/{accountId}";
+            var accountResponse = await _httpClient.GetAsync(accountApiUrl);
 
-            _db.ChatRooms.Add(chatRoom);
-            await _db.SaveChangesAsync();
+            if (!accountResponse.IsSuccessStatusCode)
+            {
+                return StatusCode((int)accountResponse.StatusCode, "Failed to fetch the bank account.");
+            }
+
+            var jsonAccountResponse = await accountResponse.Content.ReadAsStringAsync();
+            var bankResponse = JsonSerializer.Deserialize<AccountModel>(jsonAccountResponse);
+
+            if (bankResponse == null)
+            {
+                return BadRequest("Invalid data received from Payment API.");
+            }
+
+            string account = bankResponse.accountNumber;
+
+
+            // Fetch the order summary from the Payments API
+            var orderSummaryUrl = _configuration["AccountApiUrl"] + $"Order/orderSummary/{orderId}";
+            var orderSummaryResponse = await _httpClient.GetAsync(orderSummaryUrl);
+
+            if (orderSummaryResponse == null)
+            {
+                return BadRequest("Invalid data received from Payment API.");
+            }
+
+            var jsonSummaryResponse = await orderSummaryResponse.Content.ReadAsStringAsync();
+            var summaryResponse = JsonSerializer.Deserialize<OrderSummary>(jsonSummaryResponse);
+
+            if (summaryResponse == null)
+            {
+                return BadRequest("Invalid data received from Payment API.");
+            }
+
+            chatRoom.RoomId = Guid.NewGuid();
+            chatRoom.BankAccount = account;
+            chatRoom.TotalAmount = summaryResponse.OrderAmount;
+            chatRoom.AmountRemaining = summaryResponse.OrderAmount;
+            chatRoom.Participants = summaryResponse.Participants;
 
             return Ok(chatRoom);
         }
 
-        // GET: friends/v1/<ChatRoomController>
-        [HttpGet("{roomId}/status")]
-        public async Task<IActionResult> GetPaymentStatus(Guid roomId)
-        {
-            var chatRoom = await _db.ChatRooms.Include(cr => cr.UserPayments)
-                .FirstOrDefaultAsync(cr => cr.RoomId == roomId);
-            if (chatRoom == null)
-            {
-                return NotFound("Chat Room not found");
-            }
-            var usersPaid = chatRoom.UserPayments.Count(x => x.HasPaid);
-            var usersNotPaid = chatRoom.UserPayments.Count(x => !x.HasPaid);
-
-            var response = new PaymentStatusResponse
-            {
-                TotalAmount = chatRoom.TotalAmount,
-                AmountRemaining = chatRoom.AmountRemaining,
-                UsersPaid = usersPaid,
-                UsersNotPaid = usersNotPaid,
-                UserPayments = chatRoom.UserPayments
-            };
-            return Ok(response);
-        }
-
-        // PUT friends/v1/<ChatRoomController>/5
-        [HttpPut("updatePaymentStatus")]
-        public async Task<IActionResult> UpdatePaymentStatus([FromBody] UserPaymentStatus userPaymentStatus)
-        {
-            var existingUserPayment = await _db.UserPayments
-                .FirstOrDefaultAsync(up => up.Id == userPaymentStatus.Id);
-
-            if(existingUserPayment == null)
-            {
-                return NotFound("User not found in char room");
-            }
-
-            existingUserPayment.HasPaid = userPaymentStatus.HasPaid;
-            existingUserPayment.AmountPaid = userPaymentStatus.AmountPaid;
-
-            var chatRoom = await _db.ChatRooms.FindAsync(existingUserPayment.ChatRoomId);
-            if(chatRoom == null)
-            {
-                chatRoom.AmountRemaining = chatRoom.TotalAmount - chatRoom.UserPayments
-                    .Sum(x => x.AmountPaid);
-            }
-            _db.UserPayments.Update(existingUserPayment);
-            await _db.SaveChangesAsync();
-            return Ok(existingUserPayment);
-        }
-
-        [HttpDelete]
-        public async Task<IActionResult> DeleteChatRoom(Guid roomId)
-        {
-            var chatRoom = await _db.ChatRooms.Include(cr => cr.UserPayments)
-                .FirstOrDefaultAsync(cr => cr.RoomId == roomId);
-            if (chatRoom == null)
-                return NotFound("Chat Room not found");
-            {
-            }
-            _db.ChatRooms.Remove(chatRoom);
-            await _db.SaveChangesAsync();
-            return Ok("Chat Room deleted successfully");
-        }
     }
 }

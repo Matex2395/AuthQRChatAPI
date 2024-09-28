@@ -2,7 +2,7 @@
 
 namespace AuthQRChatAPI.Models
 {
-    public class QR
+    public class QRData
     {
         [Key]
         public int Id { get; set; }

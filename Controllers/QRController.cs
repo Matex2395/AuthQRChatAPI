@@ -11,12 +11,6 @@ namespace AuthQRChatAPI.Controllers
     [ApiController]
     public class QRController : ControllerBase
     {
-        private readonly AppDbContext _db;
-
-        public QRController(AppDbContext db)
-        {
-            _db = db;
-        }
 
         //// GET: api/<QRController>
         //[HttpGet]

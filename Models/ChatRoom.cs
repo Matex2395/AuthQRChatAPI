@@ -7,8 +7,8 @@ namespace AuthQRChatAPI.Models
         [Key]
         public Guid RoomId { get; set; }
         public string BankAccount { get; set; }
-        public decimal TotalAmount { get; set; }
-        public decimal AmountRemaining { get; set; }
-        public List<UserPaymentStatus> UserPayments { get; set; } = new List<UserPaymentStatus>();
+        public float TotalAmount { get; set; }
+        public float AmountRemaining { get; set; }
+        public List<ParticipantSummary> Participants { get; set; } = new List<ParticipantSummary>();
     }
 }
